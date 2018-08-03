@@ -1,0 +1,23 @@
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644
+
+output:
+  logstash:
+    enabled: true
+    hosts:
+      - localhost:5044
+    ssl:
+      certificate_authorities:
+        - /etc/pki/tls/certs/logstash-beats.crt
+    timeout: 15
+
+filebeat:
+  prospectors:
+    -
+      paths:
+        - "/logstash/*.log"
