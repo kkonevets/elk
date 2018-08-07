@@ -15,8 +15,12 @@ localpath = '../data/logstash'
 paramiko.util.log_to_file(os.path.join(localpath, 'paramiko.logs'))
 
 
-def as_day(ts):
-    return datetime.fromtimestamp(ts).strftime('%Y-%m-%d')
+def get_fname2date(fnames):
+    ret = {}
+    for fn in fnames:
+        date = fn.lstrip('1c-catalog-').rstrip('.log.gz')
+        ret[fn] = datetime.strptime(date, "%Y-%m-%d").date()
+    return ret
 
 
 def sync(localpath):
@@ -28,14 +32,17 @@ def sync(localpath):
 
     local_files = glob(localpath + '/*.log')
     local_files = {os.path.split(f)[1] + '.gz' for f in local_files}
+    if local_files:
+        max_local_date = max(get_fname2date(local_files).values())
+    else:
+        max_local_date = datetime.strptime('0001-01-01', "%Y-%m-%d").date()
 
-    cur_date = as_day(time.time())
+    cur_date = datetime.now().date()
     remote_files = set(sftp.listdir('logstash'))
-    for fname in remote_files - local_files:
-        if cur_date in fname:
-            print('passing current date log %s ' % fname)
-            continue
-
+    fname2date = get_fname2date(remote_files - local_files)
+    diff = [fn for fn, date in fname2date.items() if
+            max_local_date < date < cur_date]
+    for fname in diff:
         remote_name = os.path.join(remotepath, fname)
         local_name = os.path.join(localpath, fname)
         sftp.get(remote_name, local_name)
