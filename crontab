@@ -1,0 +1,4 @@
+MAILTO=kkon@1c.ru
+
+0 4 * * * cd /home/ubuntu/elk && /home/ubuntu/miniconda3/bin/python logsync.py
+#* * * * * cd /home/ubuntu/elk && /home/ubuntu/miniconda3/bin/python logsync.py
