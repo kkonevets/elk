@@ -113,6 +113,74 @@ def most_frequent_searches_query(size=100):
     return body
 
 
+def query_time_stat():
+    size = 1000
+    q = {
+        "from": 0,
+        "size": size,
+        "query": {
+            "bool": {
+                "must": [
+                    {
+                        "range": {
+                            "@timestamp": {
+                                "gte": 1540328400000,
+                                "lte": 1540501199999,
+                                "format": "epoch_millis"
+                            }
+                        }
+                    },
+                    {
+                        "exists": {
+                            "field": "request.query.keyword"
+                        }
+                    }
+                ],
+                "filter": [],
+                "should": [],
+                "must_not": []
+            }
+        },
+        "_source": [
+            "@timestamp",
+            "request.time",
+            "response.time",
+            "request.query"
+        ]
+    }
+
+    es = Elasticsearch(timeout=120)
+    q['size'] = 1
+    res = es.search(index="logstat", body=q)
+    q['size'] = size
+    total = res['hits']['total']
+    df = []
+
+    def doquery():
+        res = es.search(index="logstat", body=q)
+        for el in res['hits']['hits']:
+            src = el['_source']
+            req = src['request']
+            resp = src['response']
+            rec = [req['query'], resp['time'] - req['time'], src['@timestamp']]
+            df.append(rec)
+
+    _from = 0
+    while _from < total:
+        doquery()
+        _from += size
+        q['from'] = _from
+        print(_from)
+
+
+    df = pd.DataFrame.from_records(df)
+    df.columns = ['query', 'time', 'timestamp']
+    head = df.sort_values(by='time', ascending=False).head(50)
+    head.to_csv('../data/logstat.csv', encoding='utf8', index=False)
+
+
+
+
 if __name__ == '__main__':
     es = Elasticsearch(timeout=120)
 
@@ -177,4 +245,4 @@ if __name__ == '__main__':
                    'count': buck['doc_count']})
     df = pd.DataFrame.from_records(df)
     df.to_excel('../data/logstash/most_frequent_queries.xlsx', encoding='utf8',
-                    index=False)
+                index=False)
