@@ -145,7 +145,9 @@ def query_time_stat():
             "@timestamp",
             "request.time",
             "response.time",
-            "request.query"
+            "request.query",
+            "request.url",
+            "request.body"
         ]
     }
 
@@ -162,7 +164,8 @@ def query_time_stat():
             src = el['_source']
             req = src['request']
             resp = src['response']
-            rec = [req['query'], resp['time'] - req['time'], src['@timestamp']]
+            rec = [req['query'], resp['time'] - req['time'],
+                   src['@timestamp'], req['body'], req['url']]
             df.append(rec)
 
     _from = 0
@@ -174,8 +177,8 @@ def query_time_stat():
 
 
     df = pd.DataFrame.from_records(df)
-    df.columns = ['query', 'time', 'timestamp']
-    head = df.sort_values(by='time', ascending=False).head(50)
+    df.columns = ['query', 'time', 'timestamp', 'body', 'url']
+    head = df.sort_values(by='time', ascending=False).head(1000)
     head.to_csv('../data/logstat.csv', encoding='utf8', index=False)
 
 
