@@ -6,7 +6,7 @@ from pprint import pprint
 MAX_SIZE = 1000000
 
 
-def do_query(query_body):
+def do_query(es, query_body):
     res = es.search(index="logstat", body=query_body)
     aggs = res['aggregations']['agg_level_1']
     buckets = aggs['buckets']
@@ -113,6 +113,23 @@ def most_frequent_searches_query(size=100):
     return body
 
 
+def iterative_query(q, size=1000):
+    q['size'] = size
+
+    es = Elasticsearch(timeout=120)
+    q['size'] = 1
+    res = es.search(index="logstat", body=q)
+    q['size'] = size
+    total = res['hits']['total']
+
+    _from = 0
+    while _from < total:
+        yield es.search(index="logstat", body=q)['hits']['hits']
+        _from += size
+        q['from'] = _from
+        print(_from)
+
+
 def query_time_stat():
     size = 1000
     q = {
@@ -175,22 +192,59 @@ def query_time_stat():
         q['from'] = _from
         print(_from)
 
-
     df = pd.DataFrame.from_records(df)
     df.columns = ['query', 'time', 'timestamp', 'body', 'url']
     head = df.sort_values(by='time', ascending=False).head(1000)
     head.to_csv('../data/logstat.csv', encoding='utf8', index=False)
 
 
+def nomen_227():
+    q = {
+        "size": 1000,
+        "from": 0,
+        "_source": ["request.body.barcodes", "_id",
+                    "response.body.nomenclatures.id",
+                    "response.body.nomenclatures.barcodes"],
+        "query": {
+            "bool": {
+                "must": [
+                    {
+                        "exists": {
+                            "field": "request.body.barcodes.keyword"
+                        }
+                    }
+                ],
+                "filter": [],
+                "should": [],
+                "must_not": []
+            }
+        }
+    }
+
+    df = []
+    for res in iterative_query(q, size=1000):
+        for el in res:
+            request_bcs = set(el['_source']['request']['body']['barcodes'])
+            request_bcs = set([c.lstrip('0') for c in request_bcs])
+            resp = el['_source'].get('response')
+            noms = []
+            if resp:
+                body = resp.get('body')
+                if body:
+                    noms = body.get('nomenclatures')
+            response_bcs = set([c.lstrip('0') in n for n in noms for c in n[
+                'barcodes']])
+            if len(noms) != len(request_bcs):
+                df += list(request_bcs - response_bcs)
 
 
-if __name__ == '__main__':
+def main():
     es = Elasticsearch(timeout=120)
 
     ##################################################
 
     body = group_by_barcode_query(size=MAX_SIZE)
-    buckets = do_query(body)
+    buckets = do_query(es, body)
 
     df = []
     for buck in buckets:
@@ -210,8 +264,8 @@ if __name__ == '__main__':
 
     body1 = group_by_user_get_barcode_counts_query(size=MAX_SIZE)
     body2 = group_by_user_get_search_text_counts_query(size=MAX_SIZE)
-    buckets1 = do_query(body1)
-    buckets2 = do_query(body2)
+    buckets1 = do_query(es, body1)
+    buckets2 = do_query(es, body2)
 
     df1 = []
     for buck in buckets1:
@@ -240,7 +294,7 @@ if __name__ == '__main__':
     ##################################################
 
     body = most_frequent_searches_query(size=10000)
-    buckets = do_query(body)
+    buckets = do_query(es, body)
 
     df = []
     for buck in buckets:
@@ -249,3 +303,7 @@ if __name__ == '__main__':
     df = pd.DataFrame.from_records(df)
     df.to_excel('../data/logstash/most_frequent_queries.xlsx', encoding='utf8',
                 index=False)
+
+
+if __name__ == '__main__':
+    1
