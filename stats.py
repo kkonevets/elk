@@ -237,7 +237,7 @@ def nomen_227():
             response_bcs = set([c.lstrip('0') in n
                                 for n in noms for c in n['barcodes']])
 
-            if (len(request_bcs) == 1 and len(noms) == 0) or \
+            if not (len(request_bcs) == 1 and len(noms) == 0) and \
                     (len(response_bcs) != len(request_bcs)):
                 counts.update(request_bcs - response_bcs)
 
