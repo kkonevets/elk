@@ -2,6 +2,7 @@ from elasticsearch import Elasticsearch
 import pandas as pd
 from tqdm import tqdm
 from pprint import pprint
+from collections import Counter
 
 MAX_SIZE = 1000000
 
@@ -221,7 +222,7 @@ def nomen_227():
         }
     }
 
-    df = []
+    counts = Counter()
     for res in iterative_query(q, size=1000):
         for el in res:
             request_bcs = set(el['_source']['request']['body']['barcodes'])
@@ -231,11 +232,19 @@ def nomen_227():
             if resp:
                 body = resp.get('body')
                 if body:
-                    noms = body.get('nomenclatures')
-            response_bcs = set([c.lstrip('0') in n for n in noms for c in n[
-                'barcodes']])
-            if len(noms) != len(request_bcs):
-                df += list(request_bcs - response_bcs)
+                    noms = body.get('nomenclatures', [])
+
+            response_bcs = set([c.lstrip('0') in n
+                                for n in noms for c in n['barcodes']])
+
+            if (len(request_bcs) == 1 and len(noms) == 0) or \
+                    (len(response_bcs) != len(request_bcs)):
+                counts.update(request_bcs - response_bcs)
+
+        break
+
+    counts = pd.DataFrame.from_records([(k, v) for k, v in counts.items()])
+    counts.to_excel('../data/logstash/bcs_not_found.xlsx', index=False)
 
 
 def main():
