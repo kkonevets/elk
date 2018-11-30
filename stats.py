@@ -222,10 +222,11 @@ def nomen_227():
         }
     }
 
-    counts = Counter()
+    notfound = Counter()
+    found = Counter()
     for res in iterative_query(q, size=1000):
         for el in res:
-            request_bcs = set(el['_source']['request']['body']['barcodes'])
+            request_bcs = el['_source']['request']['body']['barcodes']
             request_bcs = set([c.lstrip('0') for c in request_bcs])
             resp = el['_source'].get('response')
             noms = []
@@ -234,17 +235,20 @@ def nomen_227():
                 if body:
                     noms = body.get('nomenclatures', [])
 
-            response_bcs = set([c.lstrip('0') in n
+            response_bcs = set([c.lstrip('0')
                                 for n in noms for c in n['barcodes']])
 
-            if not (len(request_bcs) == 1 and len(noms) == 0) and \
-                    (len(response_bcs) != len(request_bcs)):
-                counts.update(request_bcs - response_bcs)
+            if (len(request_bcs) > 0 and len(noms) == 0) or \
+                    (len(response_bcs) != len(request_bcs)
+                     and len(response_bcs) > 0):
+                notfound.update(request_bcs - response_bcs)
+            else:
+                found.update(request_bcs)
 
-        break
-
-    counts = pd.DataFrame.from_records([(k, v) for k, v in counts.items()])
-    counts.to_excel('../data/logstash/bcs_not_found.xlsx', index=False)
+    diff = notfound - found
+    diff = pd.DataFrame.from_records([(k, v) for k, v in diff.items()])
+    diff.to_excel('../data/logstash/bcs_not_found.xlsx',
+                  index=False, header=False)
 
 
 def main():
