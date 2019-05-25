@@ -1,4 +1,4 @@
-MAILTO=kkon@1c.ru
+MAILTO=kkonevets@gmail.com
 
 0 4 * * * cd /home/ubuntu/elk && /home/ubuntu/miniconda3/bin/python logsync.py
 #* * * * * cd /home/ubuntu/elk && /home/ubuntu/miniconda3/bin/python logsync.py
