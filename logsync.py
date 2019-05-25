@@ -7,8 +7,8 @@ import gzip
 import shutil
 
 host = 'catalog-api-logstash1-gpt-msk.int.1s.ru'
-user = 'kkon'
-secret = 'NdZV3SpiPm8apq8J4LTQ'
+user = ''
+secret = ''
 port = 22
 
 localpath = '../data/logstash'
