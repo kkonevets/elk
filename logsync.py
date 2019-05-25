@@ -6,7 +6,7 @@ from glob import glob
 import gzip
 import shutil
 
-host = 'catalog-api-logstash1-gpt-msk.int.1s.ru'
+host = 'somehost.ru'
 user = ''
 secret = ''
 port = 22
